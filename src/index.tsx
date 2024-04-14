@@ -73,17 +73,37 @@ const createDistFolders = (page: string) => {
 
 app.listen(port, async () => {
   createDistFolder();
-  require("child_process").execSync(
-    "esbuild src/pages/page.tsx --bundle --outfile=dist/pages/bundle.js --loader:.js=jsx --format=cjs"
-    // 'rsync -avAXz --info=progress2 "/src" "/dest"',
-    // {stdio: 'inherit'}
-  );
+  // require("child_process").execSync(
+  //   "esbuild src/pages/page.tsx --bundle --outfile=dist/pages/bundle.js --loader:.js=jsx"
+  //   // 'rsync -avAXz --info=progress2 "/src" "/dest"',
+  //   // {stdio: 'inherit'}
+  // );
   //Static generation
   // for (const page of pages) {
+  const fullPath = createDistFolders(pages[2]);
   const tsxPage = await import(`./pages/${pages[2]}`);
 
   console.log(tsxPage);
   const Page = tsxPage.default;
+
+  fs.writeFileSync(
+    path.join(process.cwd(), "src/app.tsx"),
+    `
+  import React from "react";
+  import { createRoot } from "react-dom/client";
+  import Page from "./pages/${pages[2].replace(".tsx", "")}";
+
+  createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <Page/>
+    </React.StrictMode>);
+  `
+  );
+
+  require("child_process").execSync(
+    `esbuild src/app.tsx --bundle --outfile=dist/pages${fullPath.replace("page.tsx", "bundle.js")} --loader:.js=jsx`
+  );
+
   let outputHtml: string | Root = "";
   let data = {};
   if (tsxPage.getStaticProps) {
@@ -115,16 +135,11 @@ app.listen(port, async () => {
         <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
         <script type="text/javascript" src="https://unpkg.com/babel-standalone@6/babel.js"></script>
         <script type="text/javascript" src="./bundle.js"></script>
-        
-
-        <script type="text/babel">
-            ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
-        </script>
     </body>
     </html>
     `;
+  // ReactDOM.createRoot(document.getElementById('root')).render(<Page/>);
 
-  const fullPath = createDistFolders(pages[2]);
   if (typeof outputHtml === "string") {
     fs.writeFileSync(
       path.join(

@@ -5,9 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node src/index.tsx",
-    "tsc": "npx -p typescript tsc src/pages/page.tsx",
-    "build": "esbuild src/pages/page.tsx --bundle --outfile=dist/pages/bundle.js --loader:.js=jsx --format=cjs"
+    "start": "ts-node src/index.tsx"
   },
   "keywords": [],
   "author": "",
