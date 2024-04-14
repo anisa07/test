@@ -33,11 +33,20 @@ const pages = traverseFolder("src/pages", []);
 
 app.get("*", async (req, res) => {
   // console.log(req.protocol + "://" + req.get("host") + req.originalUrl);
-  if (req.originalUrl === "/" && pages.includes("page.tsx")) {
+  console.log(
+    "pageIndex",
+    req.originalUrl,
+    req.originalUrl === "/",
+    path.join(process.cwd(), "dist/pages", "/page.html")
+  );
+  if (req.originalUrl === "/") {
     return res.sendFile(path.join(process.cwd(), "dist/pages", "/page.html"));
   }
+  if (req.originalUrl === "/bundle.js") {
+    return res.sendFile(path.join(process.cwd(), "dist/pages", "/bundle.js"));
+  }
   const pageIndex = pages.indexOf(`${req.originalUrl}/`);
-  // console.log("pageIndex", pageIndex);
+  console.log("pageIndex", pageIndex);
   if (pageIndex !== -1) {
     return res.sendFile(
       path.join(process.cwd(), "dist/pages", `${req.originalUrl}/page.html`)
@@ -73,12 +82,7 @@ const createDistFolders = (page: string) => {
 
 app.listen(port, async () => {
   createDistFolder();
-  // require("child_process").execSync(
-  //   "esbuild src/pages/page.tsx --bundle --outfile=dist/pages/bundle.js --loader:.js=jsx"
-  //   // 'rsync -avAXz --info=progress2 "/src" "/dest"',
-  //   // {stdio: 'inherit'}
-  // );
-  //Static generation
+  // Static generation
   // for (const page of pages) {
   const fullPath = createDistFolders(pages[2]);
   const tsxPage = await import(`./pages/${pages[2]}`);
@@ -134,7 +138,7 @@ app.listen(port, async () => {
         <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
         <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
         <script type="text/javascript" src="https://unpkg.com/babel-standalone@6/babel.js"></script>
-        <script type="text/javascript" src="./bundle.js"></script>
+        <script type="text/javascript" src="bundle.js"></script>
     </body>
     </html>
     `;
