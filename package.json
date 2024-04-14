@@ -1,0 +1,30 @@
+{
+  "name": "react-gen",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/index.tsx",
+    "tsc": "npx -p typescript tsc src/pages/page.tsx",
+    "build": "esbuild src/pages/page.tsx --bundle --outfile=dist/pages/bundle.js --loader:.js=jsx --format=cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsx-to-jsx": "^0.0.4"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/react": "^18.2.73",
+    "@types/react-dom": "^18.2.23",
+    "esbuild": "0.20.2",
+    "nodemon": "^3.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.3"
+  }
+}
