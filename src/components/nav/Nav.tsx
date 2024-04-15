@@ -7,6 +7,7 @@ export const Nav = () => {
       <Link path="/" label="Home" />
       <Link path="/about" label="About" />
       <Link path="/about/test" label="Test" />
+      <Link path="/about/test/super" label="Super" />
     </div>
   );
 };
