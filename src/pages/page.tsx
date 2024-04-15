@@ -1,11 +1,11 @@
 import React from "react";
 import { Nav } from "../components/nav/Nav";
 
-export default function Page() {
+export default function Page({ test }: { test: string }) {
   return (
     <>
       <Nav />
-      <h1>Hello from React! {typeof window}</h1>
+      <h1>Hello from React! {test}</h1>
     </>
   );
 }

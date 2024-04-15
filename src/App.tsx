@@ -4,6 +4,6 @@
     import Page from "./pages//page";
     createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
-        <Page/>
+        <Page {...{"test":"this is test static props"}} />
       </React.StrictMode>);
     

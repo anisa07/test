@@ -1,7 +1,10 @@
 import express from "express";
 import fs from "fs";
 import path from "path";
+import React from "react";
+import { JSX } from "react";
 import { Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 // import { Root } from "react-dom/client";
 // import { convertTsxToJsx } from "tsx-to-jsx";
 
@@ -86,10 +89,27 @@ app.listen(port, async () => {
     const page = pages[index];
     const fullPath = createDistFolders(page);
     const pathWithout = fullPath.replace("/", "").replace("/page.tsx", "");
-    console.log(pathWithout);
-    // const tsxPage = await import(`./pages/${page}`);
+    // console.log(pathWithout);
+    const tsxPage = await import(`./pages/${page}`);
+    const Page = tsxPage.default;
+    let staticPage: string = "";
+    let data: any;
+    if (tsxPage.getStaticProps) {
+      data = await tsxPage.getStaticProps();
+      staticPage = renderToStaticMarkup(<Page {...data} />);
+      // outputHtml = renderToStaticMarkup(<Page {...data} />);
+    } else {
+      // outputHtml = renderToStaticMarkup(<Page />);
+      staticPage = renderToStaticMarkup(<Page />);
+    }
+
     // console.log(tsxPage);
-    //   const Page = tsxPage.default;
+
+    let pageInMarkup = "<Page />";
+    if (data) {
+      pageInMarkup = "<Page {..." + JSON.stringify(data) + "} />";
+    }
+
     fs.writeFileSync(
       path.join(process.cwd(), "src/app.tsx"),
       `
@@ -98,10 +118,11 @@ app.listen(port, async () => {
     import Page from "./pages${fullPath.replace(".tsx", "")}";
     createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
-        <Page/>
+        ${pageInMarkup}
       </React.StrictMode>);
     `
     );
+
     const bundleName = `bundle-${index}.js`;
     require("child_process").execSync(
       `esbuild src/app.tsx --bundle --outfile=dist/pages${fullPath.replace("page.tsx", bundleName)} --loader:.js=jsx`
@@ -117,18 +138,19 @@ app.listen(port, async () => {
       distBundles.set(`/${bundleName}`, `${pathWithout}/${bundleName}`);
     }
     let outputHtml: string | Root = "";
-    //   let data = {};
-    //   if (tsxPage.getStaticProps) {
-    //     data = await tsxPage.getStaticProps();
-    //     // outputHtml = renderToStaticMarkup(<Page {...data} />);
-    //   } else {
-    //     // outputHtml = renderToStaticMarkup(<Page />);
-    //   }
+
+    // if (tsxPage.getStaticProps) {
+    //   data = await tsxPage.getStaticProps();
+    //   console.log(renderToStaticMarkup(<Page {...data} />));
+    //   // outputHtml = renderToStaticMarkup(<Page {...data} />);
+    // } else {
+    //   // outputHtml = renderToStaticMarkup(<Page />);
+    // }
     //   // outputHtml = renderToStaticMarkup(<Page {...data} />);
     //   // outputHtml = hydrateApp(<Page {...data} />);
     //   //  Page.tsx -> Page.js
     //   // add scritpt with Page.js in scripts
-    //   // JSON.stringify(data)
+    //   JSON.stringify(data)
 
     outputHtml = `<!DOCTYPE html>
       <html lang="en">
@@ -138,7 +160,9 @@ app.listen(port, async () => {
           <title>React App</title>
       </head>
       <body>
-          <div id="root"></div>
+          <div id="root">
+            ${staticPage}
+          </div>
           <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
           <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
           <script type="text/javascript" src="https://unpkg.com/babel-standalone@6/babel.js"></script>
