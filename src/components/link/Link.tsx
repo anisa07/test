@@ -32,6 +32,7 @@ export const Link = ({ path, label }: LinkProps) => {
         outline: "inherit",
         padding: "10px",
       }}
+      onClick={handleClick}
     >
       {label}
     </a>
