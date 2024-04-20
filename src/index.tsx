@@ -1,5 +1,4 @@
 import express from "express";
-import fs from "fs";
 import path from "path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -10,6 +9,7 @@ import {
   createHtmlPage,
   createReactPageEntryPoint,
   deleteReactPageEntryPoint,
+  findLayout,
   traverseFolder,
 } from "./utils/utils";
 import { staticTemplate } from "./templates/static-template";
@@ -57,30 +57,62 @@ app.listen(port, async () => {
 
   for (let index = 0; index < pages.length; index++) {
     const page = pages[index];
-    const tsxPage = await import(`./pages/${page}`);
+
+    if (page.includes("layout.tsx")) {
+      continue;
+    }
+
+    let tsxPage: Record<string, any> = {};
+
+    if (page.includes("page.tsx")) {
+      tsxPage = await import(`./pages/${page}`);
+    }
+
     const Page = tsxPage.default;
+    let Layout: any = null;
     const fullPath = createDistFolders(page);
     const pathWithoutExtension = fullPath
       .replace("/", "")
       .replace("/page.tsx", "");
 
+    const layoutPath = findLayout(`${pathWithoutExtension}/layout.tsx`, pages);
+
+    if (layoutPath) {
+      const tsxLayout = await import(`./pages/${layoutPath}`);
+      Layout = tsxLayout.default;
+    }
+
     // create static and dynamic page content
     let staticPage: string = "";
-    let dynamicPage = "<Page />";
+    let dynamicPage = Layout ? "<Layout><Page /></Layout>" : "<Page />";
     let data: any;
 
     if (tsxPage.getStaticProps) {
       data = await tsxPage.getStaticProps();
-      staticPage = renderToStaticMarkup(<Page {...data} />);
+      staticPage = Layout
+        ? renderToStaticMarkup(
+            <Layout>
+              <Page {...data} />
+            </Layout>
+          )
+        : renderToStaticMarkup(<Page {...data} />);
     } else {
-      staticPage = renderToStaticMarkup(<Page />);
+      staticPage = Layout
+        ? renderToStaticMarkup(
+            <Layout>
+              <Page />
+            </Layout>
+          )
+        : renderToStaticMarkup(<Page />);
     }
 
     if (data) {
-      dynamicPage = "<Page {..." + JSON.stringify(data) + "} />";
+      dynamicPage = Layout
+        ? "<Layout><Page {..." + JSON.stringify(data) + "} /></Layout>"
+        : "<Page {..." + JSON.stringify(data) + "} />";
     }
 
-    createReactPageEntryPoint(fullPath, dynamicPage);
+    createReactPageEntryPoint(fullPath, dynamicPage, layoutPath);
 
     // create js bundle for dynamic page
     const bundleName = `bundle.js`;
@@ -101,7 +133,7 @@ app.listen(port, async () => {
       createHtmlPage(fullPath, outputHtml);
     }
 
-    // delete app.tsx
+    // delete helper page after build app.tsx
     deleteReactPageEntryPoint();
   }
 

@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { dynamicTemplate } from "../templates/dynamic-template";
+import { layoutDynamicTemplate } from "../templates/layout-dynamic-template";
 
 /**
  * Recursively traverse a folder and accumulate paths.
@@ -18,8 +19,10 @@ export function traverseFolder(folderPath: string, paths: string[]) {
     } else {
       paths.push(
         itemPath.replace(
-          folderPath.includes("src/pages") ? "src/pages" : "dist/pages",
+          "src/pages",
           ""
+          //   folderPath.includes("src/pages") ? "src/pages" : "dist/pages",
+          //   ""
         )
       );
     }
@@ -84,15 +87,28 @@ export const buildPageJsBundle = (pagePath: string, bundleName: string) => {
  * Create React dynamic page entry point
  * @param {string} pagePath - Path of the page in pages structure.
  * @param {string} dynamicPageMarkup - Dynamic page template.
+ * @param {string} layoutPath - Optional parameter of the layout path.
  */
 export const createReactPageEntryPoint = (
   pagePath: string,
-  dynamicPageMarkup: string
+  dynamicPageMarkup: string,
+  layoutPath?: string
 ) => {
-  fs.writeFileSync(
-    path.join(process.cwd(), "src/utils/app.tsx"),
-    dynamicTemplate(pagePath.replace("/", ""), dynamicPageMarkup)
-  );
+  if (layoutPath) {
+    fs.writeFileSync(
+      path.join(process.cwd(), "src/utils/app.tsx"),
+      layoutDynamicTemplate(
+        layoutPath,
+        pagePath.replace("/", ""),
+        dynamicPageMarkup
+      )
+    );
+  } else {
+    fs.writeFileSync(
+      path.join(process.cwd(), "src/utils/app.tsx"),
+      dynamicTemplate(pagePath.replace("/", ""), dynamicPageMarkup)
+    );
+  }
 };
 
 /**
@@ -100,4 +116,28 @@ export const createReactPageEntryPoint = (
  */
 export const deleteReactPageEntryPoint = () => {
   fs.unlinkSync("src/utils/app.tsx");
+};
+
+/**
+ * Find page layout
+ * @param {string} layoutPath - Suggested path to look for layout.
+ * @param {string[]} pages - All pages.
+ */
+export const findLayout = (
+  layoutPath: string,
+  pages: string[]
+): string | undefined => {
+  if (pages.includes(layoutPath)) {
+    return layoutPath;
+  }
+  let newLayoutPath = layoutPath.replace("/layout.tsx", "");
+  newLayoutPath = newLayoutPath.substring(0, newLayoutPath.lastIndexOf("/"));
+
+  if (newLayoutPath) {
+    return findLayout(`${newLayoutPath}/layout.tsx`, pages);
+  }
+
+  if (!newLayoutPath && pages.includes("/layout.tsx")) {
+    return "/layout.tsx";
+  }
 };
