@@ -18,19 +18,37 @@ const app = express();
 const port = 3000;
 
 let pages: string[] = [];
-const distPages: Map<string, string> = new Map();
-const distBundles: Map<string, string> = new Map();
+const distPages: Record<string, string> = {};
+const distBundles: Record<string, string> = {};
 
 app.get("*", async (req, res) => {
-  const bundle = distBundles.get(req.originalUrl);
-  const page = distPages.get(req.originalUrl);
+  // console.log("req.originalUrl", req.originalUrl);
+  // console.log("distPages", distPages);
+  // console.log("distBundles", distBundles);
+  const bundle = distBundles[req.originalUrl];
+  const page = distPages[req.originalUrl];
+  // console.log("bundle", bundle);
+  // console.log("page", page);
 
   if (page) {
     return res.sendFile(path.join(process.cwd(), "dist/pages", page));
   }
+
   if (bundle) {
     return res.sendFile(path.join(process.cwd(), "dist/pages", bundle));
   }
+
+  // const pagesKeys = Object.keys(distPages);
+  // console.log('pagesKeys', pagesKeys)
+  // const splitUrl = req.originalUrl.split("/")
+  // for (const pageKey of pagesKeys) {
+  //   if (pageKey.includes("[")) {
+  //     const splitPageKey = pageKey.split("/")
+  //     // req.originalUrl
+
+  //   }
+  // }
+  // how to solve dynamic urls
 });
 
 app.listen(port, async () => {
@@ -65,34 +83,19 @@ app.listen(port, async () => {
     createReactPageEntryPoint(fullPath, dynamicPage);
 
     // create js bundle for dynamic page
-    const bundleName = `bundle-${index}.js`;
+    const bundleName = `bundle.js`;
     buildPageJsBundle(fullPath, bundleName);
 
-    distPages.set(
-      pathWithoutExtension || "/",
-      `${pathWithoutExtension}/page.html`
+    distPages[pathWithoutExtension || "/"] =
+      `${pathWithoutExtension}/page.html`;
+
+    distBundles[`${pathWithoutExtension}/${bundleName}`] =
+      `${pathWithoutExtension}/${bundleName}`;
+
+    const outputHtml = staticTemplate(
+      staticPage,
+      `${pathWithoutExtension}/${bundleName}`
     );
-
-    if (
-      pathWithoutExtension.indexOf("/") !==
-      pathWithoutExtension.lastIndexOf("/")
-    ) {
-      const subPath = pathWithoutExtension.substring(
-        0,
-        pathWithoutExtension.lastIndexOf("/")
-      );
-      distBundles.set(
-        `${subPath}/${bundleName}`,
-        `${pathWithoutExtension}/${bundleName}`
-      );
-    } else {
-      distBundles.set(
-        `/${bundleName}`,
-        `${pathWithoutExtension}/${bundleName}`
-      );
-    }
-
-    const outputHtml = staticTemplate(staticPage, bundleName);
 
     if (typeof outputHtml === "string") {
       createHtmlPage(fullPath, outputHtml);
