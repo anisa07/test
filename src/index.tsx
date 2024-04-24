@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -18,6 +19,7 @@ const app = express();
 const port = 3000;
 
 let pages: string[] = [];
+const bracketsRegex = new RegExp(/\[\w+\]/);
 const distPages: Record<string, string> = {};
 const distBundles: Record<string, string> = {};
 
@@ -51,9 +53,84 @@ app.get("*", async (req, res) => {
   // how to solve dynamic urls
 });
 
+const createStaticPage = async (
+  page: string,
+  tsxPage: Record<string, any>,
+  pages: string[],
+  pageId?: string
+) => {
+  let Layout: any = null;
+  const Page = tsxPage.default;
+  const fullPath = createDistFolders(page);
+  const pathWithoutExtension = fullPath
+    .replace("/", "")
+    .replace("/page.tsx", "");
+  const layoutPath = findLayout(`${pathWithoutExtension}/layout.tsx`, pages);
+
+  if (layoutPath) {
+    const tsxLayout = await import(`./pages/${layoutPath}`);
+    Layout = tsxLayout.default;
+  }
+
+  // create static and dynamic page content
+  let staticPage: string = "";
+  let dynamicPage = Layout ? "<Layout><Page /></Layout>" : "<Page />";
+  let data: Record<string, any> | null = null;
+
+  if (tsxPage.getStaticProps) {
+    data = await tsxPage.getStaticProps(pageId);
+    staticPage = Layout
+      ? renderToStaticMarkup(
+          <Layout>
+            <Page {...data} />
+          </Layout>
+        )
+      : renderToStaticMarkup(<Page {...data} />);
+  } else {
+    staticPage = Layout
+      ? renderToStaticMarkup(
+          <Layout>
+            <Page />
+          </Layout>
+        )
+      : renderToStaticMarkup(<Page />);
+  }
+
+  if (data) {
+    dynamicPage = Layout
+      ? "<Layout><Page {..." + JSON.stringify(data) + "} /></Layout>"
+      : "<Page {..." + JSON.stringify(data) + "} />";
+  }
+
+  createReactPageEntryPoint(fullPath, dynamicPage, layoutPath);
+
+  // create js bundle for dynamic page
+  const bundleName = `bundle.js`;
+  buildPageJsBundle(fullPath, bundleName);
+
+  distPages[pathWithoutExtension || "/"] = `${pathWithoutExtension}/page.html`;
+
+  distBundles[`${pathWithoutExtension}/${bundleName}`] =
+    `${pathWithoutExtension}/${bundleName}`;
+
+  const outputHtml = staticTemplate(
+    staticPage,
+    `${pathWithoutExtension}/${bundleName}`
+  );
+
+  if (typeof outputHtml === "string") {
+    createHtmlPage(fullPath, outputHtml);
+  }
+
+  // delete helper page after build app.tsx
+  deleteReactPageEntryPoint();
+};
+
 app.listen(port, async () => {
   createDistFolder();
   pages = traverseFolder("src/pages", []);
+
+  console.log(pages);
 
   for (let index = 0; index < pages.length; index++) {
     const page = pages[index];
@@ -68,73 +145,37 @@ app.listen(port, async () => {
       tsxPage = await import(`./pages/${page}`);
     }
 
-    const Page = tsxPage.default;
-    let Layout: any = null;
-    const fullPath = createDistFolders(page);
-    const pathWithoutExtension = fullPath
-      .replace("/", "")
-      .replace("/page.tsx", "");
+    if (bracketsRegex.test(page)) {
+      const pageIds = tsxPage.getStaticPageIds() || [];
+      for (const pageId of pageIds) {
+        const genPagePath = page
+          .replace(bracketsRegex, pageId)
+          .replace("/page.tsx", "");
+        if (
+          !fs.existsSync(path.join(process.cwd(), `src/pages/${genPagePath}`))
+        ) {
+          fs.mkdirSync(path.join(process.cwd(), `src/pages/${genPagePath}`));
+        }
+        fs.copyFileSync(
+          path.join(process.cwd(), `src/pages/${page}`),
+          path.join(process.cwd(), `src/pages/${genPagePath}/page.tsx`)
+        );
 
-    const layoutPath = findLayout(`${pathWithoutExtension}/layout.tsx`, pages);
+        await createStaticPage(
+          `${genPagePath}/page.tsx`,
+          tsxPage,
+          pages,
+          pageId
+        );
 
-    if (layoutPath) {
-      const tsxLayout = await import(`./pages/${layoutPath}`);
-      Layout = tsxLayout.default;
-    }
-
-    // create static and dynamic page content
-    let staticPage: string = "";
-    let dynamicPage = Layout ? "<Layout><Page /></Layout>" : "<Page />";
-    let data: any;
-
-    if (tsxPage.getStaticProps) {
-      data = await tsxPage.getStaticProps();
-      staticPage = Layout
-        ? renderToStaticMarkup(
-            <Layout>
-              <Page {...data} />
-            </Layout>
-          )
-        : renderToStaticMarkup(<Page {...data} />);
+        fs.rmSync(path.join(process.cwd(), `src/pages/${genPagePath}`), {
+          recursive: true,
+          force: true,
+        });
+      }
     } else {
-      staticPage = Layout
-        ? renderToStaticMarkup(
-            <Layout>
-              <Page />
-            </Layout>
-          )
-        : renderToStaticMarkup(<Page />);
+      await createStaticPage(page, tsxPage, pages);
     }
-
-    if (data) {
-      dynamicPage = Layout
-        ? "<Layout><Page {..." + JSON.stringify(data) + "} /></Layout>"
-        : "<Page {..." + JSON.stringify(data) + "} />";
-    }
-
-    createReactPageEntryPoint(fullPath, dynamicPage, layoutPath);
-
-    // create js bundle for dynamic page
-    const bundleName = `bundle.js`;
-    buildPageJsBundle(fullPath, bundleName);
-
-    distPages[pathWithoutExtension || "/"] =
-      `${pathWithoutExtension}/page.html`;
-
-    distBundles[`${pathWithoutExtension}/${bundleName}`] =
-      `${pathWithoutExtension}/${bundleName}`;
-
-    const outputHtml = staticTemplate(
-      staticPage,
-      `${pathWithoutExtension}/${bundleName}`
-    );
-
-    if (typeof outputHtml === "string") {
-      createHtmlPage(fullPath, outputHtml);
-    }
-
-    // delete helper page after build app.tsx
-    deleteReactPageEntryPoint();
   }
 
   console.log(`Server is running on http://localhost:${port}`);
