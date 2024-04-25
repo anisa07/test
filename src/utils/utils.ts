@@ -35,12 +35,8 @@ export function traverseFolder(folderPath: string, paths: string[]) {
  * Create main output folder and first pages folder
  */
 export const createDistFolder = () => {
-  if (!fs.existsSync("dist")) {
-    fs.mkdirSync("dist");
-  }
-  if (!fs.existsSync("dist/pages")) {
-    fs.mkdirSync("dist/pages");
-  }
+  createFolderIfNotExist("dist");
+  createFolderIfNotExist("dist/pages");
 };
 
 /**
@@ -53,11 +49,41 @@ export const createDistFolders = (pagePath: string) => {
   let fullPath = "";
   for (const p of pagePathStruct) {
     fullPath += `/${p}`;
-    if (p !== "page.tsx" && !fs.existsSync(`dist/pages${fullPath}`)) {
-      fs.mkdirSync(`dist/pages${fullPath}`);
+    if (p !== "page.tsx") {
+      createFolderIfNotExist(`dist/pages${fullPath}`);
     }
   }
   return fullPath;
+};
+
+/**
+ * Copy file from folder to folder
+ * @param {string} from - copy source path.
+ * @param {string} to - copy distination path.
+ */
+export const copyFileFromFolderToFolder = (from: string, to: string) => {
+  fs.copyFileSync(path.join(process.cwd(), from), path.join(process.cwd(), to));
+};
+
+/**
+ * Create folder if it doesn't exist
+ * @param {string} folderPath - Path of the folder.
+ */
+export const createFolderIfNotExist = (folderPath: string) => {
+  if (!fs.existsSync(path.join(process.cwd(), folderPath))) {
+    fs.mkdirSync(path.join(process.cwd(), folderPath));
+  }
+};
+
+/**
+ * Remove folder and its content
+ * @param {string} folderPath - Path of the folder.
+ */
+export const removeFolderAndItsContent = (folderPath: string) => {
+  fs.rmSync(path.join(process.cwd(), folderPath), {
+    recursive: true,
+    force: true,
+  });
 };
 
 /**

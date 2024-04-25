@@ -1,16 +1,18 @@
 import express from "express";
 import path from "path";
-import fs from "fs";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   buildPageJsBundle,
+  copyFileFromFolderToFolder,
   createDistFolder,
   createDistFolders,
+  createFolderIfNotExist,
   createHtmlPage,
   createReactPageEntryPoint,
   deleteReactPageEntryPoint,
   findLayout,
+  removeFolderAndItsContent,
   traverseFolder,
 } from "./utils/utils";
 import { staticTemplate } from "./templates/static-template";
@@ -24,13 +26,8 @@ const distPages: Record<string, string> = {};
 const distBundles: Record<string, string> = {};
 
 app.get("*", async (req, res) => {
-  // console.log("req.originalUrl", req.originalUrl);
-  // console.log("distPages", distPages);
-  // console.log("distBundles", distBundles);
   const bundle = distBundles[req.originalUrl];
   const page = distPages[req.originalUrl];
-  // console.log("bundle", bundle);
-  // console.log("page", page);
 
   if (page) {
     return res.sendFile(path.join(process.cwd(), "dist/pages", page));
@@ -39,18 +36,6 @@ app.get("*", async (req, res) => {
   if (bundle) {
     return res.sendFile(path.join(process.cwd(), "dist/pages", bundle));
   }
-
-  // const pagesKeys = Object.keys(distPages);
-  // console.log('pagesKeys', pagesKeys)
-  // const splitUrl = req.originalUrl.split("/")
-  // for (const pageKey of pagesKeys) {
-  //   if (pageKey.includes("[")) {
-  //     const splitPageKey = pageKey.split("/")
-  //     // req.originalUrl
-
-  //   }
-  // }
-  // how to solve dynamic urls
 });
 
 const createStaticPage = async (
@@ -130,8 +115,6 @@ app.listen(port, async () => {
   createDistFolder();
   pages = traverseFolder("src/pages", []);
 
-  console.log(pages);
-
   for (let index = 0; index < pages.length; index++) {
     const page = pages[index];
 
@@ -151,14 +134,12 @@ app.listen(port, async () => {
         const genPagePath = page
           .replace(bracketsRegex, pageId)
           .replace("/page.tsx", "");
-        if (
-          !fs.existsSync(path.join(process.cwd(), `src/pages/${genPagePath}`))
-        ) {
-          fs.mkdirSync(path.join(process.cwd(), `src/pages/${genPagePath}`));
-        }
-        fs.copyFileSync(
-          path.join(process.cwd(), `src/pages/${page}`),
-          path.join(process.cwd(), `src/pages/${genPagePath}/page.tsx`)
+
+        createFolderIfNotExist(`src/pages/${genPagePath}`);
+
+        copyFileFromFolderToFolder(
+          `src/pages/${page}`,
+          `src/pages/${genPagePath}/page.tsx`
         );
 
         await createStaticPage(
@@ -168,10 +149,7 @@ app.listen(port, async () => {
           pageId
         );
 
-        fs.rmSync(path.join(process.cwd(), `src/pages/${genPagePath}`), {
-          recursive: true,
-          force: true,
-        });
+        removeFolderAndItsContent(`src/pages/${genPagePath}`);
       }
     } else {
       await createStaticPage(page, tsxPage, pages);
