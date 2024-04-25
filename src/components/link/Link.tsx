@@ -1,27 +1,19 @@
 import React from "react";
+import { getHostUrl } from "../../app-helpers/app-helpers";
 
 interface LinkProps {
   path: string;
   label: string;
 }
 
-const state = {};
-
-const hasWindow = () => typeof window !== "undefined";
-
 export const Link = ({ path, label }: LinkProps) => {
-  const url = new URL(
-    (hasWindow() ? window.location.origin : "http://localhost:3000") + path
-  );
-
   const handleClick = () => {
-    console.log("test");
-    // history.pushState(state, "", url);
+    console.log("test geturl", `${getHostUrl()}${path}`);
   };
 
   return (
     <a
-      href={`http://localhost:3000${path}`}
+      href={`${getHostUrl()}${path}`}
       style={{
         background: "none",
         color: "inherit",

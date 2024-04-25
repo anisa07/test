@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import "dotenv/config";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -18,7 +19,7 @@ import {
 import { staticTemplate } from "./templates/static-template";
 
 const app = express();
-const port = 3000;
+const port = process.env.SERVER_PORT;
 
 let pages: string[] = [];
 const bracketsRegex = new RegExp(/\[\w+\]/);
@@ -156,5 +157,5 @@ app.listen(port, async () => {
     }
   }
 
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on http//localhost:${port}`);
 });
