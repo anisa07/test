@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import {
   buildPageJsBundle,
   copyFileFromFolderToFolder,
+  copyFolderFromTo,
   createDistFolder,
   createDistFolders,
   createFolderIfNotExist,
@@ -36,6 +37,10 @@ app.get("*", async (req, res) => {
 
   if (bundle) {
     return res.sendFile(path.join(process.cwd(), "dist/pages", bundle));
+  }
+
+  if (req.originalUrl.includes("/resources/")) {
+    return res.sendFile(path.join(process.cwd(), "dist", req.originalUrl));
   }
 });
 
@@ -114,6 +119,8 @@ const createStaticPage = async (
 
 app.listen(port, async () => {
   createDistFolder();
+  copyFolderFromTo("src/resources", "dist/resources");
+
   pages = traverseFolder("src/pages", []);
 
   for (let index = 0; index < pages.length; index++) {

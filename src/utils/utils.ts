@@ -62,7 +62,25 @@ export const createDistFolders = (pagePath: string) => {
  * @param {string} to - copy distination path.
  */
 export const copyFileFromFolderToFolder = (from: string, to: string) => {
-  fs.copyFileSync(path.join(process.cwd(), from), path.join(process.cwd(), to));
+  if (fs.existsSync(from)) {
+    fs.copyFileSync(
+      path.join(process.cwd(), from),
+      path.join(process.cwd(), to)
+    );
+  }
+};
+
+/**
+ * Copy folder with files from source to distination
+ * @param {string} from - copy source path.
+ * @param {string} to - copy distination path.
+ */
+export const copyFolderFromTo = (from: string, to: string) => {
+  if (fs.existsSync(from)) {
+    fs.cpSync(path.join(process.cwd(), from), path.join(process.cwd(), to), {
+      recursive: true,
+    });
+  }
 };
 
 /**
